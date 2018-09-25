@@ -1,0 +1,45 @@
+Design of CS780 Project
+
+Goal: 
+Develop software that identifies the number of commits from developers that add or update comments.
+Are certain developers more prone to writing comments?
+
+Requirements:
+1. Identify all of the developers contributing to a repository.
+2. For each developer, identify all of their commits with diffs and store in a file.
+3. Determine how many diffs contain updates/additions to comments and store those comments in a file.
+
+Implementation Ideas:
+
+    Gathering diffs:
+    import git
+
+    repo = git.Repo(path=<path>)
+
+    commits = list(repo.iter_commits())
+
+    print repo.git.diff(commits[0], commits[1])
+
+
+Design:
+
+    DevProcessing Class
+        repo: str
+        developers: Developer[]
+        DevProcessing(repo: str)
+        store_csv_report(path: str)
+
+    Developer Class
+        name: str
+        email: str
+        diffs: Diff[]
+        comments: str[]
+        Developer(name: str, email: str)
+        diff_count(): int
+        comment_count(): int
+        add_diff(diff: str)
+
+    Diff Class
+        diff: str
+        Diff(diff: str)
+        comments(): str[]
