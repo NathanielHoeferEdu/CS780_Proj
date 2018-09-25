@@ -7,6 +7,12 @@ class Developer:
     pass
 
 class Diff:
-    def __init__(self):
+    def __init__(self, diff):
+        self.diff = diff
 
-    pass
+    @property
+    def diff(self):
+        return self.diff
+
+    def comments(self):
+        return [""]
