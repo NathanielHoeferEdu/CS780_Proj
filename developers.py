@@ -8,11 +8,11 @@ class Developer:
 
 class Diff:
     def __init__(self, diff):
-        self.diff = diff
+        self._diff = diff
 
     @property
     def diff(self):
-        return self.diff
+        return self._diff
 
     def comments(self):
         return [""]

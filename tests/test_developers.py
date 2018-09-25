@@ -13,53 +13,59 @@ class TestDiff(unittest.TestCase):
                '''-With Pypeline you can easily create multi-stage data pipelines using 3 type of workers:\n''' \
                '''+With Pypeline you can create multi-stage data pipelines using with 3 type of workers:'''
 
-    DIFF_BLOCK = "# increase price to 5%\n" \
-                 "price = price * 1.05"
+    DIFF_SINGLE = "+// Updated single Line Comment in C++\n" \
+                  "+price = price * 1.05\n" \
+                  "// This is single Line Comment in C++"
 
-    DIFF_INLINE = "price = price * 1.05  # increase price to 5%"
+    DIFF_INLINE = "price = price * 1.05 // inline comment\n" \
+                  "-price = price * 1.05 // updated inline comment"
 
-    DIFF_ONE_LINE_DOC = '''def quicksort():\n''' \
-                        '''""" sort the list using quicksort algorithm """'''
+    DIFF_INLINE_BLOCK = "Inline block comment /* inline block comment */\n" \
+                  "-Inline block comment /* updated inline block comment */"
 
-    DIFF_MULTI_LINE_DOC = '''def quicksort():\n''' \
-                        '''""" sort the list using quicksort algorithm \n''' \
-                        '''Second Line\n''' \
-                        '''First Line\n''' \
-                        '''\n''' \
-                        '''"""'''
+    DIFF_ONE_LINE_BLOCK = '''def quicksort():\n''' \
+                          '''+/* Updated Single line block comment */\n''' \
+                          '''/* Single line block comment */\n'''
+
+    DIFF_MULTI_LINE_BLOCK = '''def quicksort():\n''' \
+                        '''/* This is multi line block comment. \n''' \
+                        '''in C++\n''' \
+                        '''*/\n''' \
+                        '''-/* Updated multi line block comment. \n''' \
+                        '''-in C++\n''' \
+                        '''-*/\n'''
 
     DIFF_BAD = '''def quicksort():\n''' \
-                '''""" sort the list using quicksort algorithm \n''' \
-                '''Second Line"""\n''' \
-                '''First Line\n''' \
-                '''\n''' \
-                '''"""'''
+                '''-/* Updated multi line block comment. \n''' \
+                '''-in C++\n'''
 
-    DIFF_MULTIPLE = "\n".join([DIFF_ONE_LINE_DOC, "", DIFF_BLOCK, DIFF_INLINE])
+    DIFF_MULTIPLE = "\n".join([DIFF_ONE_LINE_BLOCK, "", DIFF_SINGLE, DIFF_INLINE])
 
     def test_diff_inst(self):
         diff = Diff(self.DIFF_STD)
         self.assertEqual(diff.diff, self.DIFF_STD)
 
     def test_diff_block(self):
-        diff = Diff(self.DIFF_BLOCK)
-        self.assertEqual(diff.comments(), ["# increase price to 5%"])
+        diff = Diff(self.DIFF_SINGLE)
+        self.assertEqual(diff.comments(), ["// Updated single Line Comment in C++"])
 
     def test_diff_inline(self):
         diff = Diff(self.DIFF_INLINE)
-        self.assertEqual(diff.comments(), ["# increase price to 5%"])
+        self.assertEqual(diff.comments(), ["// updated inline comment"])
+
+    def test_diff_inline_block(self):
+        diff = Diff(self.DIFF_INLINE_BLOCK)
+        self.assertEqual(diff.comments(), ["/* updated inline block comment */"])
 
     def test_diff_one_line_doc(self):
-        diff = Diff(self.DIFF_ONE_LINE_DOC)
-        self.assertEqual(diff.comments(), ['""" sort the list using quicksort algorithm """'])
+        diff = Diff(self.DIFF_ONE_LINE_BLOCK)
+        self.assertEqual(diff.comments(), ["/* Updated Single line block comment */"])
 
     def test_diff_multi_line_doc(self):
-        diff = Diff(self.DIFF_MULTI_LINE_DOC)
-        expected_comment = '''""" sort the list using quicksort algorithm \n''' \
-                            '''Second Line\n''' \
-                            '''First Line\n''' \
-                            '''\n''' \
-                            '''"""'''
+        diff = Diff(self.DIFF_MULTI_LINE_BLOCK)
+        expected_comment = '''-/* Updated multi line block comment. \n''' \
+                           '''-in C++\n''' \
+                           '''-*/\n'''
         self.assertEqual(diff.comments(), [expected_comment])
 
     def test_diff_bad(self):
@@ -69,9 +75,9 @@ class TestDiff(unittest.TestCase):
     def test_diff_multiple(self):
         diff = Diff(self.DIFF_MULTIPLE)
         expected_comment = []
-        expected_comment.append('""" sort the list using quicksort algorithm """')
-        expected_comment.append('# increase price to 5%')
-        expected_comment.append('# increase price to 5%')
+        expected_comment.append('/* Updated Single line block comment */')
+        expected_comment.append('// Updated single Line Comment in C++')
+        expected_comment.append('// updated inline comment')
         self.assertEqual(diff.comments(), expected_comment)
 
 
