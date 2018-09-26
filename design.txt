@@ -24,16 +24,17 @@ Implementation Ideas:
 
     Comments to identify:
     C++:
-            // This is single Line Comment in C++
-            /* This is multi line block comment.
-            in C++
-            */
-            /* Single line block comment */
-            Inline comment // inline comment
-            Inline block comment /* inline block comment */
+        // This is single Line Comment in C++
+        /* This is multi line block comment.
+        in C++
+        */
+        /* Single line block comment */
+        Inline comment // inline comment
+        Inline block comment /* inline block comment */
 
 
-(?:\-|\+)(//.*?$|/\*.*?\*/)
+(//.*?$|/\*.*?\*/|\'(?:\\.|[^\\\'])*\'|"(?:\\.|[^\\"])*")
+
 
 
 Design:
