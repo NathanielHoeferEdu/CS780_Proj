@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 import unittest
 
-from developers import Diff
+from developers import Diff, Developer
 
 
 class TestDiff(unittest.TestCase):
@@ -84,6 +84,70 @@ class TestDiff(unittest.TestCase):
         expected_comment.append('// updated inline comment')
         self.assertEqual(diff.comments, expected_comment)
 
+
+class TestDeveloper(unittest.TestCase):
+
+    NAME = "Joe Bob"
+    EMAIL = "JoeBob@Billy.com"
+
+    DIFF_FIRST = '''diff --git a/README.md b/README.md\n''' \
+                 '''index 1a674ef..88ec755 100644\n''' \
+                 '''--- a/README.md\n''' \
+                 '''+++ b/README.md\n''' \
+                 '''@@ -15,7 +15,7 @@ pip install pypeln\n''' \
+                 '''-With Pypeline you can easily create multi-stage\n''' \
+                 '''+With Pypeline you can create multi-stage data:\n''' \
+                 '''-// This is a comment\n''' \
+                 '''-price = price * 1.05 // updated inline comment'''
+
+    DIFF_SECOND = '''diff --git a/README.md b/README.md\n''' \
+                  '''index 1a674ef..88ec755 100644\n''' \
+                  '''--- a/README.md\n''' \
+                  '''+++ b/README.md\n''' \
+                  '''@@ -15,7 +15,7 @@ pip install pypeln\n''' \
+                  '''-With Pypeline you can easily create multi-stage\n''' \
+                  '''+With Pypeline you can create multi-stage data:\n''' \
+                  '''// This is a comment\n''' \
+                  '''+/* Updated Single line block comment */'''
+
+    DIFF_THIRD = '''diff --git a/README.md b/README.md\n''' \
+                 '''index 1a674ef..88ec755 100644\n''' \
+                 '''--- a/README.md\n''' \
+                 '''+++ b/README.md\n''' \
+                 '''@@ -15,7 +15,7 @@ pip install pypeln\n''' \
+                 '''-With Pypeline you can easily create multi-stage\n''' \
+                 '''+With Pypeline you can create multi-stage data:\n''' \
+                 '''/* This is multi line block comment. \n''' \
+                 '''in C++\n''' \
+                 '''*/\n''' \
+                 '''-/* Updated multi line block comment. \n''' \
+                 '''-in C++\n''' \
+                 '''-*/'''
+
+    DEV = Developer(name=NAME, email=EMAIL)
+
+    def test_info(self):
+        self.assertEqual(self.DEV.name, self.NAME)
+        self.assertEqual(self.DEV.email, self.EMAIL)
+
+    def test_add_initial_diff(self):
+        expected_comments = ["// This is a comment",
+                             "// updated inline comment"]
+        self.DEV.add_diff(self.DIFF_FIRST)
+        self.assertEqual(self.DEV.diff_count(), 1)
+        self.assertEqual(self.DEV.comment_count(), 2)
+        self.assertEqual(self.DEV.comments, expected_comments)
+        self.assertEqual(self.DEV.diffs[0].diff, self.DIFF_FIRST)
+
+    def test_add_second_diff(self):
+        self.DEV.add_diff(self.DIFF_SECOND)
+        self.assertEqual(self.DEV.diff_count(), 2)
+        self.assertEqual(self.DEV.comment_count(), 3)
+
+    def test_add_third_diff(self):
+        self.DEV.add_diff(self.DIFF_THIRD)
+        self.assertEqual(self.DEV.diff_count(), 3)
+        self.assertEqual(self.DEV.comment_count(), 4)
 
 if __name__ == '__main__':
     unittest.main()
