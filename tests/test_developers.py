@@ -2,7 +2,8 @@ from __future__ import absolute_import
 
 import unittest
 
-from developers import Diff, Developer
+from developers import Diff, Developer, DevProcessor
+import os
 
 
 class TestDiff(unittest.TestCase):
@@ -148,6 +149,35 @@ class TestDeveloper(unittest.TestCase):
         self.DEV.add_diff(self.DIFF_THIRD)
         self.assertEqual(self.DEV.diff_count(), 3)
         self.assertEqual(self.DEV.comment_count(), 4)
+
+
+class TestDevProcessor(unittest.TestCase):
+
+    def test_process_devs(self):
+        repo_path = os.path.join(os.getcwd(), "test_repo")
+        processor = DevProcessor(repo_path)
+        processor.process_devs()
+        devs = processor.developers
+        self.assertEqual(len(devs), 3)
+
+        billy = devs[0]
+        self.assertEqual(billy.name, "Billy Bob")
+        self.assertEqual(billy.email, "billybob@joe.com")
+        self.assertEqual(len(billy.comments), 4)
+        print("Billy's Comments %s" % billy.comments)
+
+        sam = devs[1]
+        self.assertEqual(sam.name, "Sam Clark")
+        self.assertEqual(sam.email, "samclark@clark.com")
+        self.assertEqual(len(sam.comments), 2)
+        print("Sam's Comments %s" % sam.comments)
+
+        lewis = devs[2]
+        self.assertEqual(lewis.name, "Lewis Smith")
+        self.assertEqual(lewis.email, "lewissmith@smith.com")
+        self.assertEqual(len(lewis.comments), 1)
+        print("Lewis' Comments %s" % lewis.comments)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -3,7 +3,7 @@
 import re
 
 
-class DevProcessing:
+class DevProcessor:
     pass
 
 

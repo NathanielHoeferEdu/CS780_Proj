@@ -42,7 +42,8 @@ Design:
     DevProcessing Class
         repo: str
         developers: Developer[]
-        DevProcessing(repo: str)
+        DevProcessor(repo: str)
+        process_devs()
         store_csv_report(path: str)
 
     Developer Class
