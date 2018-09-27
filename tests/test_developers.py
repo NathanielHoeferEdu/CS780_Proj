@@ -20,10 +20,12 @@ class TestDiff(unittest.TestCase):
                   "// This is single Line Comment in C++"
 
     DIFF_INLINE = "price = price * 1.05 // inline comment\n" \
-                  "-price = price * 1.05 // updated inline comment"
+                  "-price = price * 1.05 // not seen inline comment\n" \
+                  "+price = price * 1.05 // updated inline comment"
 
     DIFF_INLINE_BLOCK = "Inline block comment /* inline block comment */\n" \
-                        "-Inline block comment /* updated inline block comment */"  # nopep8
+                        "-Inline block comment /* not seen block comment */\n" \
+                        "+Inline block comment /* updated block comment */"
 
     DIFF_ONE_LINE_BLOCK = '''def quicksort():\n''' \
                           '''+/* Updated Single line block comment */\n''' \
@@ -33,13 +35,13 @@ class TestDiff(unittest.TestCase):
                             '''/* This is multi line block comment. \n''' \
                             '''in C++\n''' \
                             '''*/\n''' \
-                            '''-/* Updated multi line block comment. \n''' \
-                            '''-in C++\n''' \
-                            '''-*/\n'''
+                            '''+/* Updated multi line block comment. \n''' \
+                            '''+in C++\n''' \
+                            '''+*/\n'''
 
     DIFF_BAD = '''def quicksort():\n''' \
-               '''-/* Updated multi line block comment. \n''' \
-               '''-in C++\n'''
+               '''+/* Updated multi line block comment. \n''' \
+               '''+in C++\n'''
 
     DIFF_MULTIPLE = "\n".join([DIFF_ONE_LINE_BLOCK, "",
                                DIFF_SINGLE, DIFF_INLINE])
@@ -59,7 +61,7 @@ class TestDiff(unittest.TestCase):
 
     def test_diff_inline_block(self):
         diff = Diff(self.DIFF_INLINE_BLOCK)
-        self.assertEqual(diff.comments, ["/* updated inline block comment */"])
+        self.assertEqual(diff.comments, ["/* updated block comment */"])
 
     def test_diff_one_line_doc(self):
         diff = Diff(self.DIFF_ONE_LINE_BLOCK)
@@ -99,7 +101,8 @@ class TestDeveloper(unittest.TestCase):
                  '''-With Pypeline you can easily create multi-stage\n''' \
                  '''+With Pypeline you can create multi-stage data:\n''' \
                  '''-// This is a comment\n''' \
-                 '''-price = price * 1.05 // updated inline comment'''
+                 '''+// This is a comment\n''' \
+                 '''+price = price * 1.05 // updated inline comment'''
 
     DIFF_SECOND = '''diff --git a/README.md b/README.md\n''' \
                   '''index 1a674ef..88ec755 100644\n''' \
@@ -121,9 +124,9 @@ class TestDeveloper(unittest.TestCase):
                  '''/* This is multi line block comment. \n''' \
                  '''in C++\n''' \
                  '''*/\n''' \
-                 '''-/* Updated multi line block comment. \n''' \
-                 '''-in C++\n''' \
-                 '''-*/'''
+                 '''+/* Updated multi line block comment. \n''' \
+                 '''+in C++\n''' \
+                 '''+*/'''
 
     DEV = Developer(name=NAME, email=EMAIL)
 

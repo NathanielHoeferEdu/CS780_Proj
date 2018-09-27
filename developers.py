@@ -73,9 +73,9 @@ class Developer:
 
 
 class Diff:
-    """Given a standard diff, extracts modified lines and C++ comments."""
+    """Given a standard diff, extracts added lines and C++ comments."""
 
-    DIFF_PATTERN = "(?:^\+|^\-)(.*$)"
+    DIFF_PATTERN = "^\+(.*$)"
     CPP_COMMENT_PATTERN = """(//.*?$|/\*.*?\*/|\'(?:\\.|[^\\\'])*\'""" \
                           """|"(?:\\.|[^\\"])*")"""
 
