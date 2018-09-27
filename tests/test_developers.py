@@ -24,7 +24,7 @@ class TestDiff(unittest.TestCase):
                   "+price = price * 1.05 // updated inline comment"
 
     DIFF_INLINE_BLOCK = "Inline block comment /* inline block comment */\n" \
-                        "-Inline block comment /* not seen block comment */\n" \
+                        "-Inline block comment /* unseen block comment */\n" \
                         "+Inline block comment /* updated block comment */"
 
     DIFF_ONE_LINE_BLOCK = '''def quicksort():\n''' \

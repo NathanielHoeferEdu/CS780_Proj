@@ -1,10 +1,39 @@
 """Module containing the classes for evaluating developer comments."""
 
 import re
+import git
 
 
 class DevProcessor:
-    pass
+
+    def __init__(self, repo_path):
+        self._repo_path = repo_path
+        self._developers = []
+
+    @property
+    def repo_path(self):
+        return self._repo_path
+
+    @property
+    def developers(self):
+        return self._developers
+
+    def process_devs(self):
+        repo = git.Repo(path=self._repo_path)
+        commits = list(repo.iter_commits())
+
+        for parent, child in self._pairwise(commits):
+            diff = repo.git.diff(parent, child)
+            name = child.author.name
+            email = child.author.email
+            # TODO continue work to add diffs
+
+    def _pairwise(self, iterable):
+        it = iter(iterable)
+        a = next(it, None)
+        for b in it:
+            yield (a, b)
+            a = b
 
 
 class Developer:
