@@ -1,6 +1,6 @@
 /**
 This is a test file
-/*
+*/
 
 // This is a class specifically for comments
 class Comments {

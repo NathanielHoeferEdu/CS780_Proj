@@ -2,6 +2,18 @@
 
 import re
 import git
+import logging
+
+logger = logging.getLogger('dev')
+logger.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter('%(asctime)s - %(name)s: %(message)s')
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+
+EMPTY_TREE_SHA = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 
 
 class DevProcessor:
@@ -21,12 +33,29 @@ class DevProcessor:
     def process_devs(self):
         repo = git.Repo(path=self._repo_path)
         commits = list(repo.iter_commits())
+        commits.reverse()
+        logger.debug("Number of commits: {}".format(len(commits)))
 
-        for parent, child in self._pairwise(commits):
-            diff = repo.git.diff(parent, child)
-            name = child.author.name
-            email = child.author.email
-            # TODO continue work to add diffs
+        for commit in commits:
+            if not commit.parents:
+                diff = self._init_commit_diff(commit)
+            else:
+                diff_obj = commit.parents[0].diff(commit, create_patch=True)
+                diff = diff_obj[0].diff.decode("utf-8")
+            if not diff:
+                continue
+
+            commit_sha = commit.hexsha
+            name = commit.author.name
+            email = commit.author.email
+
+            dev_index = self._find_dev(name)
+            if dev_index >= 0:
+                self._developers[dev_index].add_diff(diff, commit)
+            else:
+                developer = Developer(name, email)
+                developer.add_diff(diff, commit_sha)
+                self._developers.append(developer)
 
     def _pairwise(self, iterable):
         it = iter(iterable)
@@ -35,6 +64,28 @@ class DevProcessor:
             yield (a, b)
             a = b
 
+    def _find_dev(self, name):
+        """Return the index of developer by name."""
+        for i in range(len(self._developers)):
+            if self._developers[i].name == name:
+                return i
+        return -1
+
+    def _init_commit_diff(self, init_commit):
+        """Return diff of initial commit.
+
+        There is no easy way to collect the diff of the first commit, so this
+        is the best option I found:
+        https://github.com/gitpython-developers/GitPython/issues/364
+
+        This method also requires that the '-' in the diff be replaced by '+'
+        to be counted as added lines.
+        """
+        diff_obj = init_commit.diff(EMPTY_TREE_SHA, create_patch=True)
+        diff = diff_obj[0].diff.decode("utf-8")
+        diff = re.sub(re.compile("^\-", re.MULTILINE), "+", diff)
+        # logger.debug("Init diff: {}".format(diff))
+        return diff
 
 class Developer:
     """Tracks number of diffs and comments of a particular developer."""
@@ -80,13 +131,15 @@ class Developer:
             all_comments.extend(diff.comments)
         return all_comments
 
-    def add_diff(self, diff):
+    def add_diff(self, diff, commit=None):
         """Associate a diff to this developer.
         :param str diff: string represntation of diff.
+        :param str commit: Commit identifier, usually SHA-1 checksum
         """
-        diff_obj = Diff(diff)
+        diff_obj = Diff(diff, commit)
         self._comment_count += len(diff_obj.comments)
         self._diffs.append(diff_obj)
+        logger.debug("{}, adding diff from {}, comments {}".format(self.name, commit, diff_obj.comments))
 
     def diff_count(self):
         """Number of diffs currently associated with the developer.
@@ -108,11 +161,13 @@ class Diff:
     CPP_COMMENT_PATTERN = """(//.*?$|/\*.*?\*/|\'(?:\\.|[^\\\'])*\'""" \
                           """|"(?:\\.|[^\\"])*")"""
 
-    def __init__(self, diff):
+    def __init__(self, diff, commit=None):
         """Diff Init.
         :param str diff: String representation of diff
+        :param str commit: Commit identifier, usually SHA-1 checksum
         """
         self._diff = diff
+        self._commit = commit
         self._modified_lines = self._extract_mod_lines()
         self._comments = self._extract_cpp_comments()
 
@@ -120,6 +175,10 @@ class Diff:
     def diff(self):
         """Return string representation of diff."""
         return self._diff
+
+    @property
+    def commit(self):
+        return self._commit
 
     @property
     def comments(self):
