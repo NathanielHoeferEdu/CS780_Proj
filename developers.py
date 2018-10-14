@@ -131,15 +131,15 @@ class Developer:
             all_comments.extend(diff.comments)
         return all_comments
 
-    def add_diff(self, diff, commit=None):
+    def add_diff(self, diff, commit_sha=None):
         """Associate a diff to this developer.
         :param str diff: string represntation of diff.
-        :param str commit: Commit identifier, usually SHA-1 checksum
+        :param str commit_sha: Commit identifier, usually SHA-1 checksum
         """
-        diff_obj = Diff(diff, commit)
+        diff_obj = Diff(diff, commit_sha)
         self._comment_count += len(diff_obj.comments)
         self._diffs.append(diff_obj)
-        logger.debug("{}, adding diff from {}, comments {}".format(self.name, commit, diff_obj.comments))
+        logger.debug("{}, adding diff from {}, comments {}".format(self.name, commit_sha, diff_obj.comments))
 
     def diff_count(self):
         """Number of diffs currently associated with the developer.
@@ -161,13 +161,13 @@ class Diff:
     CPP_COMMENT_PATTERN = """(//.*?$|/\*.*?\*/|\'(?:\\.|[^\\\'])*\'""" \
                           """|"(?:\\.|[^\\"])*")"""
 
-    def __init__(self, diff, commit=None):
+    def __init__(self, diff, commit_sha=None):
         """Diff Init.
         :param str diff: String representation of diff
-        :param str commit: Commit identifier, usually SHA-1 checksum
+        :param str commit_sha: Commit identifier, usually SHA-1 checksum
         """
         self._diff = diff
-        self._commit = commit
+        self._commit = commit_sha
         self._modified_lines = self._extract_mod_lines()
         self._comments = self._extract_cpp_comments()
 
