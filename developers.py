@@ -1,3 +1,4 @@
+from __future__ import print_function
 """Module containing the classes for evaluating developer comments."""
 
 import re
@@ -45,7 +46,6 @@ class DevProcessor:
             if not diff:
                 continue
 
-            commit_sha = commit.hexsha
             name = commit.author.name
             email = commit.author.email
 
@@ -54,8 +54,22 @@ class DevProcessor:
                 self._developers[dev_index].add_diff(diff, commit)
             else:
                 developer = Developer(name, email)
-                developer.add_diff(diff, commit_sha)
+                developer.add_diff(diff, commit)
                 self._developers.append(developer)
+
+    def export_dev_csv(self, filepath=None):
+        with open(filepath, 'w') as f:
+            print("{},{},{}".format("Developer", "Commit Message", "Comments"), file=f)
+            for dev in self._developers:
+                name = dev.name
+                for diff in dev.diffs:
+                    msg = diff.commit_message.replace("\n", "\\n")
+                    for comment in diff.comments:
+                        print("{},{},{}".format(name, msg, comment.replace("\n", "\\n")),
+                              file=f)
+                        name = ""
+                        msg = ""
+
 
     def _pairwise(self, iterable):
         it = iter(iterable)
@@ -83,7 +97,7 @@ class DevProcessor:
         """
         diff_obj = init_commit.diff(EMPTY_TREE_SHA, create_patch=True)
         diff = diff_obj[0].diff.decode("utf-8")
-        diff = re.sub(re.compile("^\-", re.MULTILINE), "+", diff)
+        diff = re.sub(re.compile("^-", re.MULTILINE), "+", diff)
         # logger.debug("Init diff: {}".format(diff))
         return diff
 
@@ -131,15 +145,15 @@ class Developer:
             all_comments.extend(diff.comments)
         return all_comments
 
-    def add_diff(self, diff, commit_sha=None):
+    def add_diff(self, diff, commit=None):
         """Associate a diff to this developer.
         :param str diff: string represntation of diff.
         :param str commit_sha: Commit identifier, usually SHA-1 checksum
         """
-        diff_obj = Diff(diff, commit_sha)
+        diff_obj = Diff(diff, commit)
         self._comment_count += len(diff_obj.comments)
         self._diffs.append(diff_obj)
-        logger.debug("{}, adding diff from {}, comments {}".format(self.name, commit_sha, diff_obj.comments))
+        logger.debug("{}, comments {}".format(self.name, diff_obj.comments))
 
     def diff_count(self):
         """Number of diffs currently associated with the developer.
@@ -161,13 +175,13 @@ class Diff:
     CPP_COMMENT_PATTERN = """(//.*?$|/\*.*?\*/|\'(?:\\.|[^\\\'])*\'""" \
                           """|"(?:\\.|[^\\"])*")"""
 
-    def __init__(self, diff, commit_sha=None):
+    def __init__(self, diff, commit=None):
         """Diff Init.
         :param str diff: String representation of diff
         :param str commit_sha: Commit identifier, usually SHA-1 checksum
         """
         self._diff = diff
-        self._commit = commit_sha
+        self._commit = commit
         self._modified_lines = self._extract_mod_lines()
         self._comments = self._extract_cpp_comments()
 
@@ -177,8 +191,10 @@ class Diff:
         return self._diff
 
     @property
-    def commit(self):
-        return self._commit
+    def commit_message(self):
+        message = "No commit message" if not self._commit \
+            else self._commit.message.strip()
+        return message
 
     @property
     def comments(self):

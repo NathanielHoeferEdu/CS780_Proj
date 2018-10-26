@@ -167,6 +167,7 @@ class TestDevProcessor(unittest.TestCase):
         self.assertEqual(billy.name, "Billy Bob")
         self.assertEqual(billy.email, "billybob@joe.com")
         self.assertEqual(len(billy.comments), 4)
+        self.assertEqual(billy.diffs[0].commit_message, 'Billy: Mod 3 comments')
         print("Billy's Comments %s" % billy.comments)
 
         sam = devs[1]
@@ -180,6 +181,8 @@ class TestDevProcessor(unittest.TestCase):
         self.assertEqual(lewis.email, "lewissmith@smith.com")
         self.assertEqual(len(lewis.comments), 1)
         print("Lewis' Comments %s" % lewis.comments)
+
+        processor.export_dev_csv("test_dev_comments.csv")
 
 
 if __name__ == '__main__':
