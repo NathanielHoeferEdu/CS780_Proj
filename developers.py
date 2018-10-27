@@ -4,10 +4,14 @@ from __future__ import print_function
 import re
 import git
 import logging
+import argparse
+import os
+
+from dev_utils import ProgressBar
 
 logger = logging.getLogger('dev')
 logger.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
+ch = logging.FileHandler(filename='dev_tool.log', mode='w')
 ch.setLevel(logging.DEBUG)
 
 formatter = logging.Formatter('%(asctime)s - %(name)s: %(message)s')
@@ -15,6 +19,8 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 EMPTY_TREE_SHA = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+DEFAULT_DEV_FILENAME = "dev_comments.csv"
+DEFAULT_STATS_FILENAME = "repo_stats.csv"
 
 
 class DevProcessor:
@@ -35,19 +41,32 @@ class DevProcessor:
         repo = git.Repo(path=self._repo_path)
         commits = list(repo.iter_commits())
         commits.reverse()
+        progress = ProgressBar(total=len(commits))
         logger.debug("Number of commits: {}".format(len(commits)))
 
+        curr_commit = 0
         for commit in commits:
+            curr_commit += 1
+            progress.progress(curr_commit, "Commits Processed")
+
+            diff = ""
             if not commit.parents:
                 diff = self._init_commit_diff(commit)
             else:
                 diff_obj = commit.parents[0].diff(commit, create_patch=True)
-                diff = diff_obj[0].diff.decode("utf-8")
+                if diff_obj and self._is_cpp_file(diff_obj):
+                    diff = unicode(diff_obj[0].diff, errors='ignore')
+                else:
+                    continue
             if not diff:
                 continue
 
             name = commit.author.name
             email = commit.author.email
+
+            logger.debug("Processing commit {}/{}: {} - diff: "
+                         "{}".format(curr_commit, len(commits), commit.hexsha,
+                                     diff))
 
             dev_index = self._find_dev(name)
             if dev_index >= 0:
@@ -58,6 +77,7 @@ class DevProcessor:
                 self._developers.append(developer)
 
     def export_dev_csv(self, filepath=None):
+        filepath = filepath if filepath else DEFAULT_DEV_FILENAME
         with open(filepath, 'w') as f:
             print("{},{},{}".format("Developer", "Commit Message", "Comments"), file=f)
             for dev in self._developers:
@@ -100,6 +120,17 @@ class DevProcessor:
         diff = re.sub(re.compile("^-", re.MULTILINE), "+", diff)
         # logger.debug("Init diff: {}".format(diff))
         return diff
+
+    def _is_cpp_file(self, diff_obj):
+        """True if diff object is from a .cpp or .h file."""
+        filepath = diff_obj[0].a_rawpath
+        if isinstance(filepath, str):
+            # print(diff_obj[0].a_rawpath)
+            result = filepath.endswith((".cpp", ".h", ".cc"))
+            logger.debug("Processing following file? {}, {}".format(result, filepath))
+            return result
+        else:
+            return False
 
 class Developer:
     """Tracks number of diffs and comments of a particular developer."""
@@ -207,10 +238,33 @@ class Diff:
         return self._modified_lines
 
     def _extract_mod_lines(self):
-        mod_lines = re.findall(self.DIFF_PATTERN, self.diff, re.MULTILINE)
+        mod_lines = re.findall(self.DIFF_PATTERN, self._diff, re.MULTILINE)
         return "\n".join(mod_lines)
 
     def _extract_cpp_comments(self):
         comments = re.findall(self.CPP_COMMENT_PATTERN, self._modified_lines,
                               re.DOTALL | re.MULTILINE)
         return comments
+
+
+script_desc = "Extracts comments from developers generated over the " \
+              "lifetime of a repository."
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=script_desc)
+    parser.add_argument("repository", type=str, default=None,
+                        help="Path of the repository to extract comments.")
+    parser.add_argument("-d", "--directory", type=str, default=".",
+                        help="Directory of where to store the csv files.")
+    args = parser.parse_args()
+
+    if not os.path.isdir(args.directory):
+        print("{} is not a directory".format(args.directory))
+        exit(1)
+
+    processor = DevProcessor(args.repository)
+    processor.process_devs()
+
+    dev_filepath = os.path.join(args.directory, DEFAULT_DEV_FILENAME)
+    print("Saving developer comments to '{}".format(dev_filepath))
+    processor.export_dev_csv(dev_filepath)

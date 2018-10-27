@@ -1,0 +1,58 @@
+2018-10-27 11:52:45,059 - dev: Joe Bob, comments ['// This is a comment', '// updated inline comment']
+2018-10-27 11:52:45,064 - dev: Joe Bob, comments ['/* Updated Single line block comment */']
+2018-10-27 11:52:45,071 - dev: Joe Bob, comments ['/* Updated multi line block comment. \nin C++\n*/']
+2018-10-27 11:52:45,132 - dev: Number of commits: 4
+2018-10-27 11:52:45,186 - dev: Processing commit 1/4: ea1b1a03997af16bbbf7658dd452f5ab4b7bad0f - diff: @@ -1,13 +0,0 @@
++/**
++This is a test file
++*/
++
++// This is a class specifically for comments
++class Comments {
++
++public:
++
++    // This is a number.
++    int number;
++
++};
+
+2018-10-27 11:52:45,187 - dev: Billy Bob, comments [u'/**\nThis is a test file\n*/', u'// This is a class specifically for comments', u'// This is a number.']
+2018-10-27 11:52:45,217 - dev: Processing commit 2/4: d757238720d982cbcf5207cd45a668320f459f47 - diff: @@ -7,7 +7,7 @@ class Comments {
+ 
+ public:
+ 
+-    // This is a number.
+-    int number;
++    // This is a double!
++    double number;  // Remember this!
+ 
+-};
++};
+\ No newline at end of file
+
+2018-10-27 11:52:45,217 - dev: Sam Clark, comments [u'// This is a double!', u'// Remember this!']
+2018-10-27 11:52:45,240 - dev: Processing commit 3/4: 884d0f711772f458d51ec726a0508f9b4d064cb5 - diff: @@ -8,6 +8,8 @@ class Comments {
+ public:
+ 
+     // This is a double!
+-    double number;  // Remember this!
++    double number;
++
++    /* Another comment by Lewis */
+ 
+ };
+\ No newline at end of file
+
+2018-10-27 11:52:45,241 - dev: Lewis Smith, comments [u'/* Another comment by Lewis */']
+2018-10-27 11:52:45,264 - dev: Processing commit 4/4: 8c14266efc2e4b77cf92ac16ebc3a92931f732a9 - diff: @@ -10,6 +10,6 @@ public:
+     // This is a double!
+     double number;
+ 
+-    /* Another comment by Lewis */
++    /* Another comment by Billy */
+ 
+ };
+\ No newline at end of file
+
+2018-10-27 11:52:45,264 - dev: Billy Bob, comments [u'/* Another comment by Billy */']
