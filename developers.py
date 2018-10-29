@@ -6,6 +6,7 @@ import git
 import logging
 import argparse
 import os
+import sys
 
 from dev_utils import ProgressBar
 
@@ -49,36 +50,35 @@ class DevProcessor:
             curr_commit += 1
             progress.progress(curr_commit, "Commits Processed")
 
-            diff = ""
-            if not commit.parents:
-                diff = self._init_commit_diff(commit)
-            else:
-                diff_obj = commit.parents[0].diff(commit, create_patch=True)
-                if diff_obj and self._is_cpp_file(diff_obj):
-                    diff = unicode(diff_obj[0].diff, errors='ignore')
-                else:
-                    continue
-            if not diff:
+            diffs = self._extract_diffs(commit)
+            if not diffs:
                 continue
 
             name = commit.author.name
             email = commit.author.email
 
-            logger.debug("Processing commit {}/{}: {} - diff: "
-                         "{}".format(curr_commit, len(commits), commit.hexsha,
-                                     diff))
+            log_intro = "Processing commit {}/{} " \
+                        "{}:".format(curr_commit, len(commits),commit.hexsha)
+            log_commit_msg = "{}".format(commit.message.encode('utf-8').strip())
+            process_commit_log = "\n".join([log_intro, log_commit_msg, "-"*30])
+            logger.debug(process_commit_log)
 
             dev_index = self._find_dev(name)
             if dev_index >= 0:
-                self._developers[dev_index].add_diff(diff, commit)
+                developer = self._developers[dev_index]
             else:
-                developer = Developer(name, email)
+                self._developers.append(Developer(name, email))
+                developer = self._developers[-1]
+
+            for diff in diffs:
+                logger.debug("Processing diff {}".format(diff))
                 developer.add_diff(diff, commit)
-                self._developers.append(developer)
+
 
     def export_dev_csv(self, filepath=None):
         filepath = filepath if filepath else DEFAULT_DEV_FILENAME
         with open(filepath, 'w') as f:
+            print("Repository\n{}\n".format(self._repo_path), file=f)
             print("{},{},{}".format("Developer", "Commit Message", "Comments"), file=f)
             for dev in self._developers:
                 name = dev.name
@@ -105,8 +105,21 @@ class DevProcessor:
                 return i
         return -1
 
-    def _init_commit_diff(self, init_commit):
-        """Return diff of initial commit.
+    def _extract_diffs(self, commit):
+        """If diffs exists, return list(str) of diffs."""
+        diffs = []
+        if not commit.parents:
+            return self._init_commit_diffs(commit)
+
+        diff_obj = commit.parents[0].diff(commit, create_patch=True)
+        if diff_obj:
+            for diff in diff_obj:
+                if self._is_cpp_file(diff):
+                    diffs.append(unicode(diff.diff, errors='ignore'))
+        return diffs
+
+    def _init_commit_diffs(self, init_commit):
+        """Return diffs of initial commit.
 
         There is no easy way to collect the diff of the first commit, so this
         is the best option I found:
@@ -116,16 +129,19 @@ class DevProcessor:
         to be counted as added lines.
         """
         diff_obj = init_commit.diff(EMPTY_TREE_SHA, create_patch=True)
-        diff = diff_obj[0].diff.decode("utf-8")
-        diff = re.sub(re.compile("^-", re.MULTILINE), "+", diff)
-        # logger.debug("Init diff: {}".format(diff))
-        return diff
+        diffs = []
+        for diff in diff_obj:
+            if self._is_cpp_file(diff):
+                diff_str = diff.diff.decode("utf-8")
+                diff_str = re.sub(re.compile("^-", re.MULTILINE), "+", diff_str)
+                if diff_str:
+                    diffs.append(diff_str)
+        return diffs
 
-    def _is_cpp_file(self, diff_obj):
-        """True if diff object is from a .cpp or .h file."""
-        filepath = diff_obj[0].a_rawpath
+    def _is_cpp_file(self, diff):
+        """True if diff object is from a C++ file."""
+        filepath = diff.a_rawpath
         if isinstance(filepath, str):
-            # print(diff_obj[0].a_rawpath)
             result = filepath.endswith((".cpp", ".h", ".cc"))
             logger.debug("Processing following file? {}, {}".format(result, filepath))
             return result
@@ -184,7 +200,7 @@ class Developer:
         diff_obj = Diff(diff, commit)
         self._comment_count += len(diff_obj.comments)
         self._diffs.append(diff_obj)
-        logger.debug("{}, comments {}".format(self.name, diff_obj.comments))
+        logger.debug("{}, added comments {}".format(self.name, diff_obj.comments))
 
     def diff_count(self):
         """Number of diffs currently associated with the developer.
@@ -203,8 +219,7 @@ class Diff:
     """Given a standard diff, extracts added lines and C++ comments."""
 
     DIFF_PATTERN = "^\+(.*$)"
-    CPP_COMMENT_PATTERN = """(//.*?$|/\*.*?\*/|\'(?:\\.|[^\\\'])*\'""" \
-                          """|"(?:\\.|[^\\"])*")"""
+    CPP_COMMENT_PATTERN = """(?: |^)(//.*?$|/\*.*?\*/)"""
 
     def __init__(self, diff, commit=None):
         """Diff Init.
@@ -224,7 +239,7 @@ class Diff:
     @property
     def commit_message(self):
         message = "No commit message" if not self._commit \
-            else self._commit.message.strip()
+            else self._commit.message.encode('utf-8').strip()
         return message
 
     @property
@@ -266,5 +281,6 @@ if __name__ == "__main__":
     processor.process_devs()
 
     dev_filepath = os.path.join(args.directory, DEFAULT_DEV_FILENAME)
-    print("Saving developer comments to '{}".format(dev_filepath))
+    sys.stdout.flush()
+    print("\nSaving developer comments to '{}".format(dev_filepath))
     processor.export_dev_csv(dev_filepath)
