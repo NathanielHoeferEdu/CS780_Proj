@@ -6,7 +6,7 @@ import git
 import logging
 import argparse
 import os
-import sys
+import csv
 
 from dev_utils import ProgressBar
 
@@ -27,7 +27,9 @@ DEFAULT_STATS_FILENAME = "repo_stats.csv"
 class DevProcessor:
 
     def __init__(self, repo_path):
+        self._repo = git.Repo(path=repo_path)
         self._repo_path = repo_path
+        self._repo_name = os.path.basename(self._repo.working_dir)
         self._developers = []
 
     @property
@@ -39,8 +41,7 @@ class DevProcessor:
         return self._developers
 
     def process_devs(self):
-        repo = git.Repo(path=self._repo_path)
-        commits = list(repo.iter_commits())
+        commits = list(self._repo.iter_commits())
         commits.reverse()
         progress = ProgressBar(total=len(commits))
         logger.debug("Number of commits: {}".format(len(commits)))
@@ -54,13 +55,14 @@ class DevProcessor:
             if not diffs:
                 continue
 
-            name = commit.author.name
-            email = commit.author.email
+            name = commit.author.name.encode('utf-8')
+            email = commit.author.email.encode('utf-8')
 
             log_intro = "Processing commit {}/{} " \
                         "{}:".format(curr_commit, len(commits),commit.hexsha)
-            log_commit_msg = "{}".format(commit.message.encode('utf-8').strip())
-            process_commit_log = "\n".join([log_intro, log_commit_msg, "-"*30])
+            commit_msg = commit.message.encode('utf-8').strip()
+            log_commit_msg = "{}".format(commit_msg)
+            process_commit_log = "\n".join([log_intro, log_commit_msg, "="*len(commit_msg)])
             logger.debug(process_commit_log)
 
             dev_index = self._find_dev(name)
@@ -76,17 +78,21 @@ class DevProcessor:
 
 
     def export_dev_csv(self, filepath=None):
-        filepath = filepath if filepath else DEFAULT_DEV_FILENAME
+        if not filepath:
+            filepath = "".join([self._repo_name, "_comments.csv"])
+        print("\nSaving developer comments to '{}".format(filepath))
+
         with open(filepath, 'w') as f:
-            print("Repository\n{}\n".format(self._repo_path), file=f)
-            print("{},{},{}".format("Developer", "Commit Message", "Comments"), file=f)
+            writer = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            writer.writerow(["Repository", self._repo_path])
+            writer.writerow([])
+            writer.writerow(["Developer", "Commit Message", "Comments"])
             for dev in self._developers:
                 name = dev.name
                 for diff in dev.diffs:
-                    msg = diff.commit_message.replace("\n", "\\n")
+                    msg, _, _ = diff.commit_message.partition("\n")
                     for comment in diff.comments:
-                        print("{},{},{}".format(name, msg, comment.replace("\n", "\\n")),
-                              file=f)
+                        writer.writerow([name, msg, comment.replace("\n", "\\n")])
                         name = ""
                         msg = ""
 
@@ -111,11 +117,12 @@ class DevProcessor:
         if not commit.parents:
             return self._init_commit_diffs(commit)
 
-        diff_obj = commit.parents[0].diff(commit, create_patch=True)
-        if diff_obj:
-            for diff in diff_obj:
-                if self._is_cpp_file(diff):
-                    diffs.append(unicode(diff.diff, errors='ignore'))
+        for parent in commit.parents:
+            diff_obj = parent.diff(commit, create_patch=True)
+            if diff_obj:
+                for diff in diff_obj:
+                    if self._is_cpp_file(diff):
+                        diffs.append(unicode(diff.diff, errors='ignore'))
         return diffs
 
     def _init_commit_diffs(self, init_commit):
@@ -140,12 +147,13 @@ class DevProcessor:
 
     def _is_cpp_file(self, diff):
         """True if diff object is from a C++ file."""
-        filepath = diff.a_rawpath
+        filepath = diff.b_rawpath if diff.b_rawpath else diff.a_rawpath
         if isinstance(filepath, str):
             result = filepath.endswith((".cpp", ".h", ".cc"))
             logger.debug("Processing following file? {}, {}".format(result, filepath))
             return result
         else:
+            logger.debug("Not processing file: {}".format(filepath))
             return False
 
 class Developer:
@@ -280,7 +288,5 @@ if __name__ == "__main__":
     processor = DevProcessor(args.repository)
     processor.process_devs()
 
-    dev_filepath = os.path.join(args.directory, DEFAULT_DEV_FILENAME)
-    sys.stdout.flush()
-    print("\nSaving developer comments to '{}".format(dev_filepath))
-    processor.export_dev_csv(dev_filepath)
+    os.chdir(args.directory)
+    processor.export_dev_csv()
