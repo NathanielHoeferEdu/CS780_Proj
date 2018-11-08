@@ -80,7 +80,7 @@ class DevProcessor:
     def export_dev_csv(self, filepath=None):
         if not filepath:
             filepath = "".join([self._repo_name, "_comments.csv"])
-        print("\nSaving developer comments to '{}".format(filepath))
+        print("Saving developer comments to '{}".format(filepath))
 
         with open(filepath, 'w') as f:
             writer = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -96,6 +96,25 @@ class DevProcessor:
                         name = ""
                         msg = ""
 
+    def export_comment_ratio(self, filepath=None):
+        if not filepath:
+            filepath = "".join([self._repo_name, "_comment_ratio.csv"])
+        print("Saving repo comment ratios to '{}".format(filepath))
+
+        with open(filepath, 'w') as f:
+            writer = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            writer.writerow(["Repository", self._repo_path])
+            writer.writerow([])
+            writer.writerow(["The commit count is gathered from commits with C++ "
+                             "files and do not contain merges."])
+            writer.writerow(["Developer", "Comments", "Commits",
+                             "Ratio (Comments/Commits)"])
+            for dev in self._developers:
+                name = dev.name
+                comments = dev.comment_count()
+                commits = dev.diff_count()
+                ratio = float(comments) / float(commits)
+                writer.writerow([name, comments, commits, "{:0.4f}".format(ratio)])
 
     def _pairwise(self, iterable):
         it = iter(iterable)
@@ -294,4 +313,6 @@ if __name__ == "__main__":
     processor.process_devs()
 
     os.chdir(args.directory)
+    print("")
     processor.export_dev_csv()
+    processor.export_comment_ratio()
