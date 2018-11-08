@@ -4,3 +4,4 @@ __pycache__/
 test_repos/
 *.csv
 *.log
+.DS_Store

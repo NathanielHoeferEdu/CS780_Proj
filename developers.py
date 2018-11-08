@@ -117,7 +117,8 @@ class DevProcessor:
         if not commit.parents:
             return self._init_commit_diffs(commit)
 
-        for parent in commit.parents:
+        if not self._is_merge(commit):
+            parent = commit.parents[0]
             diff_obj = parent.diff(commit, create_patch=True)
             if diff_obj:
                 for diff in diff_obj:
@@ -155,6 +156,10 @@ class DevProcessor:
         else:
             logger.debug("Not processing file: {}".format(filepath))
             return False
+
+    def _is_merge(self, commit):
+        """True if commit object is a result of a merge."""
+        return len(commit.parents) > 1
 
 class Developer:
     """Tracks number of diffs and comments of a particular developer."""
