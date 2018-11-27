@@ -327,7 +327,7 @@ if __name__ == "__main__":
     parser.add_argument("repository", type=str, default=None,
                         help="Path of the repository to extract comments.")
     parser.add_argument("-d", "--directory", type=str, default=".",
-                        help="Directory of where to store the csv files.")
+                        help="Directory of where to store the .csv files.")
     args = parser.parse_args()
 
     if not os.path.isdir(args.directory):
