@@ -27,7 +27,7 @@ class DevProcessor:
     """Collects developer metrics from a given repository.
 
     The metrics gathered are the diffs and comments made over the lifetime of
-    the repository.
+    the repository found within C++ files.
     """
 
     def __init__(self, repo_path):
@@ -319,7 +319,7 @@ class Diff:
 
 
 
-script_desc = "Extracts comments from developers generated over the " \
+script_desc = "Extracts C++ comments from developers generated over the " \
               "lifetime of a repository."
 
 if __name__ == "__main__":

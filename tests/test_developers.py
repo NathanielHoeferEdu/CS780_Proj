@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 import unittest
 
-from extract_comments import Diff, Developer, DevProcessor
+from extract_cpp_comments import Diff, Developer, DevProcessor
 import os
 
 
