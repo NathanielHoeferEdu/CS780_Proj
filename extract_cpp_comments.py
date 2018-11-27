@@ -179,10 +179,10 @@ class DevProcessor:
         diffs = []
         for diff in diff_obj:
             if self._is_cpp_file(diff):
-                diff_str = diff.diff.decode("utf-8")
+                diff_str = diff.diff.decode("utf_8", errors='ignore')
                 diff_str = re.sub(re.compile("^-", re.MULTILINE), "+", diff_str)
                 if diff_str:
-                    diffs.append(diff_str)
+                    diffs.append(diff_str.encode("utf_8", errors='ignore'))
         return diffs
 
     def _is_cpp_file(self, diff):
