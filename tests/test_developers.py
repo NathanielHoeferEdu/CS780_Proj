@@ -142,16 +142,19 @@ class TestDeveloper(unittest.TestCase):
         self.assertEqual(self.DEV.comment_count(), 2)
         self.assertEqual(self.DEV.comments, expected_comments)
         self.assertEqual(self.DEV.diffs[0].diff, self.DIFF_FIRST)
+        self.assertEqual(self.DEV.mod_line_count(), 3)
 
     def test_add_second_diff(self):
         self.DEV.add_diff(self.DIFF_SECOND)
         self.assertEqual(self.DEV.diff_count(), 2)
         self.assertEqual(self.DEV.comment_count(), 3)
+        self.assertEqual(self.DEV.mod_line_count(), 5)
 
     def test_add_third_diff(self):
         self.DEV.add_diff(self.DIFF_THIRD)
         self.assertEqual(self.DEV.diff_count(), 3)
         self.assertEqual(self.DEV.comment_count(), 4)
+        self.assertEqual(self.DEV.mod_line_count(), 9)
 
 
 class TestDevProcessor(unittest.TestCase):

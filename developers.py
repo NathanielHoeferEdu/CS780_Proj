@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from __future__ import print_function
 """Module containing the classes for evaluating developer comments."""
 
@@ -7,24 +8,27 @@ import logging
 import argparse
 import os
 import csv
+from datetime import datetime
 
-from dev_utils import ProgressBar
 
-logger = logging.getLogger('dev')
-logger.setLevel(logging.DEBUG)
-ch = logging.FileHandler(filename='dev_tool.log', mode='w')
-ch.setLevel(logging.DEBUG)
+from dev_utils import ProgressBar, config_logger
 
-formatter = logging.Formatter('%(asctime)s - %(name)s: %(message)s')
-ch.setFormatter(formatter)
-logger.addHandler(ch)
+logger = None
 
+LOG_LEVEL = logging.DEBUG
+DEFAULT_LOG_FILENAME = "dev-tool.log"
+DATETIME_FORMAT = "%Y-%m-%d_%H-%M-%S"
 EMPTY_TREE_SHA = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
-DEFAULT_DEV_FILENAME = "dev_comments.csv"
-DEFAULT_STATS_FILENAME = "repo_stats.csv"
+DEFAULT_DEV_FILENAME = "_dev_comments.csv"
+DEFAULT_STATS_FILENAME = "_repo_stats.csv"
 
 
 class DevProcessor:
+    """Collects developer metrics from a given repository.
+
+    The metrics gathered are the diffs and comments made over the lifetime of
+    the repository.
+    """
 
     def __init__(self, repo_path):
         self._repo = git.Repo(path=repo_path)
@@ -41,6 +45,7 @@ class DevProcessor:
         return self._developers
 
     def process_devs(self):
+        """Builds list of developers and all of their comments."""
         commits = list(self._repo.iter_commits())
         commits.reverse()
         progress = ProgressBar(total=len(commits))
@@ -77,9 +82,14 @@ class DevProcessor:
                 developer.add_diff(diff, commit)
 
 
-    def export_dev_csv(self, filepath=None):
-        if not filepath:
-            filepath = "".join([self._repo_name, "_comments.csv"])
+    def export_dev_csv(self, directory=None):
+        """Stores all the comments made by each developer in a .csv file."""
+        if not self._developers:
+            print("First execute 'process_devs()' to collect developer data.")
+
+        filepath = "".join([self._repo_name, DEFAULT_DEV_FILENAME])
+        if directory:
+            filepath = os.path.join(directory, filepath)
         print("Saving developer comments to '{}".format(filepath))
 
         with open(filepath, 'w') as f:
@@ -96,9 +106,18 @@ class DevProcessor:
                         name = ""
                         msg = ""
 
-    def export_comment_ratio(self, filepath=None):
-        if not filepath:
-            filepath = "".join([self._repo_name, "_comment_ratio.csv"])
+    def export_comment_ratio(self, directory=None):
+        """Stores the developer metrics in a .csv file.
+
+        Metrics: diff count, comment count, modified line count, ratio of
+            comments per modified line.
+        """
+        if not self._developers:
+            print("First execute 'process_devs()' to collect developer data.")
+
+        filepath = "".join([self._repo_name, DEFAULT_STATS_FILENAME])
+        if directory:
+            filepath = os.path.join(directory, filepath)
         print("Saving repo comment ratios to '{}".format(filepath))
 
         with open(filepath, 'w') as f:
@@ -107,14 +126,15 @@ class DevProcessor:
             writer.writerow([])
             writer.writerow(["The commit count is gathered from commits with C++ "
                              "files and do not contain merges."])
-            writer.writerow(["Developer", "Comments", "Commits",
-                             "Ratio (Comments/Commits)"])
+            writer.writerow(["Developer", "Diffs", "Comments", "Modified Lines",
+                             "Ratio (Comments/Modified Lines)"])
             for dev in self._developers:
                 name = dev.name
+                diffs = dev.diff_count()
                 comments = dev.comment_count()
-                commits = dev.diff_count()
-                ratio = float(comments) / float(commits)
-                writer.writerow([name, comments, commits, "{:0.4f}".format(ratio)])
+                mod_lines = dev.mod_line_count()
+                ratio = (float(comments) / float(mod_lines)) if mod_lines else 0
+                writer.writerow([name, diffs, comments, mod_lines, "{:0.4f}".format(ratio)])
 
     def _pairwise(self, iterable):
         it = iter(iterable)
@@ -195,30 +215,22 @@ class Developer:
 
     @property
     def name(self):
-        """Name of developer.
-        :returns: str
-        """
+        """Name of developer as str."""
         return self._name
 
     @property
     def email(self):
-        """Email of developer.
-        :returns: str
-        """
+        """Email of developer as str."""
         return self._email
 
     @property
     def diffs(self):
-        """List of all the currently added diffs.
-        :returns: list(Diff)
-        """
+        """List of all the currently added diffs."""
         return self._diffs
 
     @property
     def comments(self):
-        """List of all the comments found within the diffs.
-        :returns: list(str)
-        """
+        """List of all the comments found within the diffs."""
         all_comments = []
         for diff in self._diffs:
             all_comments.extend(diff.comments)
@@ -246,11 +258,22 @@ class Developer:
         """
         return self._comment_count
 
+    def mod_line_count(self):
+        """Number of lines updated or added.
+
+        Only includes line beginning with '+' in diff, so this doesn't include
+        lines solely removed.
+        :returns: int
+        """
+        line_count = 0
+        for diff in self._diffs:
+            line_count += len(diff.modified_lines)
+        return line_count
 
 class Diff:
     """Given a standard diff, extracts added lines and C++ comments."""
 
-    DIFF_PATTERN = "^\+(.*$)"
+    DIFF_PATTERN = "^\+(?!\+\+)(.*$)"
     CPP_COMMENT_PATTERN = """(?: |^)(//.*?$|/\*.*?\*/)"""
 
     def __init__(self, diff, commit=None):
@@ -281,17 +304,19 @@ class Diff:
 
     @property
     def modified_lines(self):
-        """Lines of code as str within diff beginning with '-' or '+'."""
+        """Lines of code as str within diff beginning with '+'."""
         return self._modified_lines
 
     def _extract_mod_lines(self):
         mod_lines = re.findall(self.DIFF_PATTERN, self._diff, re.MULTILINE)
-        return "\n".join(mod_lines)
+        return mod_lines
 
     def _extract_cpp_comments(self):
-        comments = re.findall(self.CPP_COMMENT_PATTERN, self._modified_lines,
+        comments = re.findall(self.CPP_COMMENT_PATTERN,
+                              "\n".join(self._modified_lines),
                               re.DOTALL | re.MULTILINE)
         return comments
+
 
 
 script_desc = "Extracts comments from developers generated over the " \
@@ -309,10 +334,16 @@ if __name__ == "__main__":
         print("{} is not a directory".format(args.directory))
         exit(1)
 
+    curr_time = datetime.now().strftime(DATETIME_FORMAT)
+    repo_name = os.path.basename(os.path.dirname(args.repository))
+    log_filename = "{}_{}_{}".format(curr_time, repo_name, DEFAULT_LOG_FILENAME)
+    log_filepath = os.path.join(args.directory, log_filename)
+    logger = config_logger(log_filepath, LOG_LEVEL)
+
     processor = DevProcessor(args.repository)
     processor.process_devs()
 
-    os.chdir(args.directory)
     print("")
-    processor.export_dev_csv()
-    processor.export_comment_ratio()
+    directory = args.directory if args.directory else os.path.curdir
+    processor.export_dev_csv(directory)
+    processor.export_comment_ratio(directory)

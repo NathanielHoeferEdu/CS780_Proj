@@ -1,6 +1,22 @@
 import os
 import sys
 import time
+import logging
+
+
+def config_logger(output_path, level=logging.DEBUG):
+    """Configure logger to output .log file with specified logging level."""
+    logger = logging.getLogger('dev')
+    logger.setLevel(level)
+    ch = logging.FileHandler(filename=output_path, mode='w')
+    ch.setLevel(level)
+
+    formatter = logging.Formatter('%(asctime)s - %(name)s: %(message)s')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+    print("Logs being stored as '{}'".format(output_path))
+
+    return logger
 
 
 class ProgressBar(object):
